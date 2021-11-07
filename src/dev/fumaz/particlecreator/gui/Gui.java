@@ -1,5 +1,6 @@
 package dev.fumaz.particlecreator.gui;
 
+import dev.fumaz.particlecreator.Coordinate;
 import dev.fumaz.particlecreator.particle.Particle;
 import dev.fumaz.particlecreator.particle.ParticleType;
 import dev.fumaz.particlecreator.template.Cape;
@@ -8,6 +9,7 @@ import dev.fumaz.particlecreator.template.DragonWings;
 import dev.fumaz.particlecreator.template.Template;
 import dev.fumaz.particlecreator.template.Wings;
 import dev.fumaz.particlecreator.util.Exports;
+import dev.fumaz.particlecreator.util.SizedStack;
 
 import javax.swing.AbstractAction;
 import javax.swing.JButton;
@@ -42,7 +44,7 @@ import java.util.Set;
 
 public class Gui {
 
-    public final static double VERSION = 1.0;
+    public final static double VERSION = 1.1;
 
     private final static int WIDTH = 19;
     private final static int HEIGHT = 13;
@@ -51,6 +53,9 @@ public class Gui {
 
     private final Particle[][] pixels = new Particle[HEIGHT][WIDTH];
     private final List<Template> templates = Arrays.asList(new Cape(), new Wings(), new CrescentWings(), new DragonWings());
+    private final SizedStack<Action> undo = new SizedStack<>(250);
+    private final SizedStack<Action> redo = new SizedStack<>(250);
+
     private Particle particle = new Particle(ParticleType.REDSTONE, Color.BLACK);
     private boolean running = true;
 
@@ -180,6 +185,15 @@ public class Gui {
                     return;
                 }
 
+                if (pixels[pixelY][pixelX] == null) {
+                    if (p == null) {
+                        return;
+                    }
+                } else if (pixels[pixelY][pixelX].equals(p)) {
+                    return;
+                }
+
+                undo.push(new Action(new Coordinate(pixelX, pixelY), pixels[pixelY][pixelX], p));
                 pixels[pixelY][pixelX] = p;
             }
         });
@@ -189,6 +203,8 @@ public class Gui {
         panel.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke(KeyEvent.VK_C, KeyEvent.CTRL_DOWN_MASK), "clear");
         panel.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke(KeyEvent.VK_H, KeyEvent.CTRL_DOWN_MASK), "help");
         panel.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke(KeyEvent.VK_L, KeyEvent.CTRL_DOWN_MASK), "legend");
+        panel.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke(KeyEvent.VK_Z, KeyEvent.CTRL_DOWN_MASK), "undo");
+        panel.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke(KeyEvent.VK_Z, KeyEvent.CTRL_DOWN_MASK | KeyEvent.SHIFT_DOWN_MASK), "redo");
 
         panel.getActionMap().put("clear", new AbstractAction() {
             @Override
@@ -204,6 +220,8 @@ public class Gui {
                         "Made with <3 by Fumaz\n\n" +
                         "CTRL + H - Shows this message\n" +
                         "CTRL + C - Clears the board\n" +
+                        "CTRL + Z - Undo your last action\n" +
+                        "CTRL + Shift + Z - Redo your last action\n" +
                         "Left Click - Colors a pixel\n" +
                         "Right Click - Erases a pixel", "Help", JOptionPane.INFORMATION_MESSAGE);
             }
@@ -213,6 +231,32 @@ public class Gui {
             @Override
             public void actionPerformed(ActionEvent e) {
                 JOptionPane.showMessageDialog(frame, "TODO", "TODO", JOptionPane.WARNING_MESSAGE);
+            }
+        });
+
+        panel.getActionMap().put("undo", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (undo.isEmpty()) {
+                    return;
+                }
+
+                Action action = undo.pop();
+                action.undo(pixels);
+                redo.push(action);
+            }
+        });
+
+        panel.getActionMap().put("redo", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (redo.isEmpty()) {
+                    return;
+                }
+
+                Action action = redo.pop();
+                action.redo(pixels);
+                undo.push(action);
             }
         });
 
