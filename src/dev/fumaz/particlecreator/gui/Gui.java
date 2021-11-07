@@ -15,6 +15,7 @@ import javax.swing.AbstractAction;
 import javax.swing.JButton;
 import javax.swing.JColorChooser;
 import javax.swing.JComponent;
+import javax.swing.JDialog;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
@@ -29,7 +30,12 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.GridLayout;
+import java.awt.MouseInfo;
+import java.awt.Point;
+import java.awt.Window;
 import java.awt.event.ActionEvent;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
@@ -55,9 +61,14 @@ public class Gui {
     private final List<Template> templates = Arrays.asList(new Cape(), new Wings(), new CrescentWings(), new DragonWings());
     private final SizedStack<Action> undo = new SizedStack<>(250);
     private final SizedStack<Action> redo = new SizedStack<>(250);
+    private final JColorChooser colorChooser = new JColorChooser(Color.BLACK);
 
     private Particle particle = new Particle(ParticleType.REDSTONE, Color.BLACK);
+    private Color background = Color.WHITE;
     private boolean running = true;
+
+    private static void actionPerformed(ActionEvent e1) {
+    }
 
     public void show() {
         JFrame frame = new JFrame("Particle Creator");
@@ -83,14 +94,14 @@ public class Gui {
                 return;
             }
 
-            Color color = JColorChooser.showDialog(frame, "Choose a color", particle.getColor());
+            Color color = showColorPicker(frame);
 
             particle = new Particle(type, color);
         });
 
         JButton colorButton = new JButton("Color");
         colorButton.addActionListener(e -> {
-            particle = new Particle(ParticleType.REDSTONE, JColorChooser.showDialog(frame, "Choose a color", particle.getColor()));
+            particle = new Particle(ParticleType.REDSTONE, showColorPicker(frame));
         });
 
         JButton saveButton = new JButton("Save");
@@ -205,6 +216,8 @@ public class Gui {
         panel.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke(KeyEvent.VK_L, KeyEvent.CTRL_DOWN_MASK), "legend");
         panel.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke(KeyEvent.VK_Z, KeyEvent.CTRL_DOWN_MASK), "undo");
         panel.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke(KeyEvent.VK_Z, KeyEvent.CTRL_DOWN_MASK | KeyEvent.SHIFT_DOWN_MASK), "redo");
+        panel.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke(KeyEvent.VK_B, KeyEvent.CTRL_DOWN_MASK), "background");
+        panel.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke(KeyEvent.VK_J, KeyEvent.CTRL_DOWN_MASK), "pick");
 
         panel.getActionMap().put("clear", new AbstractAction() {
             @Override
@@ -220,6 +233,8 @@ public class Gui {
                         "Made with <3 by Fumaz\n\n" +
                         "CTRL + H - Shows this message\n" +
                         "CTRL + C - Clears the board\n" +
+                        "CTRL + B - Change background color\n" +
+                        "CTRL + J - Pick color under cursor\n" +
                         "CTRL + Z - Undo your last action\n" +
                         "CTRL + Shift + Z - Redo your last action\n" +
                         "Left Click - Colors a pixel\n" +
@@ -260,6 +275,44 @@ public class Gui {
             }
         });
 
+        panel.getActionMap().put("background", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                Color color = JColorChooser.showDialog(frame, "Choose a background color", background);
+
+                if (color == null) {
+                    return;
+                }
+
+                background = color;
+            }
+        });
+
+        panel.getActionMap().put("pick", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                Point point = MouseInfo.getPointerInfo().getLocation();
+
+                int x = point.x - frame.getLocation().x;
+                int y = point.y - frame.getLocation().y;
+
+                int pixelX = x / PIXEL_SIZE;
+                int pixelY = (y - 80) / PIXEL_SIZE;
+
+                if (pixelX < 0 || pixelY < 0 || pixelX >= WIDTH || pixelY >= HEIGHT) {
+                    return;
+                }
+
+                Particle particle = pixels[pixelY][pixelX];
+
+                if (particle == null) {
+                    return;
+                }
+
+                Gui.this.particle = particle;
+            }
+        });
+
         clear();
         panel.requestFocus();
 
@@ -283,7 +336,7 @@ public class Gui {
                 boolean empty = particle == null;
 
                 if (empty) {
-                    color = Color.WHITE; // todo probably change this
+                    color = background;
                 }
 
                 graphics.setColor(color);
@@ -359,6 +412,21 @@ public class Gui {
         getParticles().forEach(particle -> mappings.put(characters.next(), particle));
 
         return mappings;
+    }
+
+    private Color showColorPicker(JFrame frame) {
+        colorChooser.setColor(particle.getColor());
+        JDialog dialog = JColorChooser.createDialog(frame, "Choose a color", true, colorChooser, null, null);
+        dialog.addComponentListener(new ComponentAdapter() {
+            @Override
+            public void componentHidden(ComponentEvent e) {
+                ((Window) e.getComponent()).dispose();
+            }
+        });
+
+        dialog.show();
+
+        return colorChooser.getColor();
     }
 
 }
