@@ -67,9 +67,6 @@ public class Gui {
     private Color background = Color.WHITE;
     private boolean running = true;
 
-    private static void actionPerformed(ActionEvent e1) {
-    }
-
     public void show() {
         JFrame frame = new JFrame("Particle Creator");
         frame.setSize(WIDTH * PIXEL_SIZE, HEIGHT * PIXEL_SIZE + 80);

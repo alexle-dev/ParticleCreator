@@ -1,6 +1,6 @@
 package dev.fumaz.particlecreator.particle;
 
-import java.awt.*;
+import java.awt.Color;
 import java.util.Objects;
 
 public class Particle {
