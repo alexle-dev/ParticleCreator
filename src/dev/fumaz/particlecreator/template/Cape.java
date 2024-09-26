@@ -23,4 +23,9 @@ public class Cape extends Template {
                 {o, o, o, o, o, o, o, X, X, X, X, o, o, o, o, o, o, o, o}};
     }
 
+    @Override
+    public String getName() {
+        return "Cape";
+    }
+
 }

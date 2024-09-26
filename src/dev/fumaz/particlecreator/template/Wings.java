@@ -23,4 +23,9 @@ public class Wings extends Template {
                 { o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o } };
     }
 
+    @Override
+    public String getName() {
+        return "Wings";
+    }
+
 }

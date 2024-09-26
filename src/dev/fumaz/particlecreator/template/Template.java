@@ -9,9 +9,7 @@ public abstract class Template {
 
     public abstract boolean[][] getPixels();
 
-    public String getName() {
-        return getClass().getSimpleName();
-    }
+    public abstract String getName();
 
     @Override
     public String toString() {

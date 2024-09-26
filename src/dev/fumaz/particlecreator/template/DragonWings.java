@@ -23,4 +23,9 @@ public class DragonWings extends Template {
                 {o, o, o, X, o, o, o, o, o, o, o, o, o, o, X, o, o, o, o}};
     }
 
+    @Override
+    public String getName() {
+        return "Dragon Wings";
+    }
+
 }
