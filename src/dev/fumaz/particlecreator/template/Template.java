@@ -23,7 +23,7 @@ public abstract class Template {
             for (int x = 0; x < pixels[y].length; x++) {
                 boolean p = getPixels()[y][x];
 
-                pixels[y][x] = !p ? null : new Particle(ParticleType.REDSTONE, Color.BLACK);
+                pixels[y][x] = !p ? null : new Particle(ParticleType.DUST, Color.BLACK);
             }
         }
     }

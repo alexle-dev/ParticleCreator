@@ -1,12 +1,15 @@
 package dev.fumaz.particlecreator;
 
-import dev.fumaz.particlecreator.gui.Gui;
-
 public class Main {
 
+    private static ParticleCreatorManager particleCreatorManager;
+
     public static void main(String[] args) {
-        Gui gui = new Gui();
-        gui.show();
+        particleCreatorManager = new ParticleCreatorManager();
+    }
+
+    public static ParticleCreatorManager getParticleCreatorManager() {
+        return particleCreatorManager;
     }
 
 }

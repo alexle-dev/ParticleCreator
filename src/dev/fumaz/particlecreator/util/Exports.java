@@ -1,6 +1,6 @@
 package dev.fumaz.particlecreator.util;
 
-import dev.fumaz.particlecreator.gui.Gui;
+import dev.fumaz.particlecreator.gui.Project;
 import dev.fumaz.particlecreator.particle.Particle;
 import dev.fumaz.particlecreator.particle.ParticleType;
 
@@ -19,7 +19,7 @@ public final class Exports {
 
         writer.append("# Particle Creator\n");
         writer.append("# Made with <3 by Fumaz\n\n");
-        writer.append("version: " + Gui.VERSION + "\n\n");
+        writer.append("version: " + Project.VERSION + "\n\n");
         writer.append("mappings:\n");
 
         mappings.forEach((character, particle) -> {

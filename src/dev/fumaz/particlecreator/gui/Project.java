@@ -1,6 +1,9 @@
 package dev.fumaz.particlecreator.gui;
 
 import dev.fumaz.particlecreator.Coordinate;
+import dev.fumaz.particlecreator.gui.button.Button;
+import dev.fumaz.particlecreator.gui.submenu.dropdown.ProjectDropdownMenu;
+import dev.fumaz.particlecreator.icons.Icons;
 import dev.fumaz.particlecreator.particle.Particle;
 import dev.fumaz.particlecreator.particle.ParticleType;
 import dev.fumaz.particlecreator.template.Cape;
@@ -8,38 +11,17 @@ import dev.fumaz.particlecreator.template.CrescentWings;
 import dev.fumaz.particlecreator.template.DragonWings;
 import dev.fumaz.particlecreator.template.Template;
 import dev.fumaz.particlecreator.template.Wings;
-import dev.fumaz.particlecreator.util.Exports;
 import dev.fumaz.particlecreator.util.SizedStack;
+import dev.fumaz.particlecreator.util.Theme;
 
-import javax.swing.AbstractAction;
-import javax.swing.JButton;
-import javax.swing.JColorChooser;
-import javax.swing.JComponent;
-import javax.swing.JDialog;
-import javax.swing.JFileChooser;
-import javax.swing.JFrame;
-import javax.swing.JOptionPane;
-import javax.swing.JPanel;
-import javax.swing.KeyStroke;
-import javax.swing.SwingUtilities;
-import javax.swing.WindowConstants;
-import javax.swing.filechooser.FileNameExtensionFilter;
-import javax.swing.filechooser.FileSystemView;
-import java.awt.BorderLayout;
-import java.awt.Color;
-import java.awt.Dimension;
-import java.awt.Graphics;
-import java.awt.GridLayout;
-import java.awt.MouseInfo;
-import java.awt.Point;
-import java.awt.Window;
+import javax.swing.*;
+import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
-import java.io.File;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -47,45 +29,93 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.StringJoiner;
 
-public class Gui {
+public class Project {
 
-    public final static double VERSION = 1.1;
+    public final static double VERSION = 2.0;
 
     private final static int WIDTH = 19;
     private final static int HEIGHT = 13;
     private final static int PIXEL_SIZE = 30;
     private final static String CHARSET = "A B C D E F G H I J K L M N P Q R S T U V W X Y Z a b c d e f g h i j k l m n p q r s t u v w x y z 0 1 2 3 4 5 6 7 8 9 ~ - = + < > . , { } ; ' : `";
+    private final static String UNTITLED = "Untitled";
 
     private final Particle[][] pixels = new Particle[HEIGHT][WIDTH];
     private final List<Template> templates = Arrays.asList(new Cape(), new Wings(), new CrescentWings(), new DragonWings());
     private final SizedStack<Action> undo = new SizedStack<>(250);
     private final SizedStack<Action> redo = new SizedStack<>(250);
     private final JColorChooser colorChooser = new JColorChooser(Color.BLACK);
+    private final Icons icons = new Icons();
 
-    private Particle particle = new Particle(ParticleType.REDSTONE, Color.BLACK);
-    private Color background = Color.WHITE;
+    private String projectName;
+    private JFrame frame;
+    private Particle particle = new Particle(ParticleType.DUST, Color.BLACK);
+    private Color background = Theme.UNCOLORED_PIXEL_COLOR;
     private boolean running = true;
+    private Image offScreenImage;
+
+    public Project(String projectName) {
+        this.projectName = projectName;
+    }
+
+    public Project() {
+        this(UNTITLED);
+    }
+
+    public void setProjectName(String projectName) {
+        this.projectName = projectName;
+
+        if (frame != null) {
+            frame.setTitle(getFrameTitle());
+        }
+    }
+
+    private String getFrameTitle() {
+        return "Particle Creator v" + VERSION + " - " + projectName;
+    }
 
     public void show() {
-        JFrame frame = new JFrame("Particle Creator");
+        frame = new JFrame(getFrameTitle());
+        frame.setIconImage(icons.getLogo().getIcon().getImage());
         frame.setSize(WIDTH * PIXEL_SIZE, HEIGHT * PIXEL_SIZE + 80);
         frame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
-        frame.setResizable(false);
         frame.setFocusable(true);
+        frame.setBackground(Theme.BACKGROUND_COLOR);
+        frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
 
         JPanel panel = new JPanel();
-        panel.setPreferredSize(new Dimension(frame.getWidth(), frame.getHeight() - 80));
+        panel.setLayout(new BorderLayout());
+        frame.add(panel, BorderLayout.CENTER);
 
         JPanel buttons = new JPanel();
         buttons.setPreferredSize(new Dimension(frame.getWidth(), 50));
+        buttons.setBackground(Theme.BACKGROUND_COLOR);
 
-        GridLayout layout = new GridLayout(1, 5);
+        GridLayout layout = new GridLayout(1, 6);
         buttons.setLayout(layout);
 
-        JButton particleButton = new JButton("Particle");
+        try {
+            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        Button projectButton = new Button("Project", icons.getMenu());
+        projectButton.addActionListener(e -> {
+            ProjectDropdownMenu dropdownMenu = new ProjectDropdownMenu(this, frame, projectButton, icons);
+            dropdownMenu.show();
+        });
+
+        Button particleButton = new Button("Particle", icons.getParticle());
         particleButton.addActionListener(e -> {
-            ParticleType type = (ParticleType) JOptionPane.showInputDialog(frame, "Please note only REDSTONE particle can have colors.\nColors selected for other particles are purely aesthetic.", "Choose a particle", JOptionPane.INFORMATION_MESSAGE, null, ParticleType.values(), particle.getType());
+            ParticleType[] colorable = ParticleType.getColorable();
+            StringJoiner colorableParticles = new StringJoiner(", ");
+            for (ParticleType type : colorable) {
+                colorableParticles.add(type.getFormattedName());
+            }
+
+            String type = (String) JOptionPane.showInputDialog(frame, "Please note only " + colorableParticles + " particles can have colors.\nColors selected for other particles are purely aesthetic.", "Choose a particle", JOptionPane.INFORMATION_MESSAGE, null, ParticleType.getFormattedNames(), particle.getType().getFormattedName());
 
             if (type == null) {
                 return;
@@ -93,67 +123,15 @@ public class Gui {
 
             Color color = showColorPicker(frame);
 
-            particle = new Particle(type, color);
+            particle = new Particle(ParticleType.fromFormattedName(type), color);
         });
 
-        JButton colorButton = new JButton("Color");
+        Button colorButton = new Button("Color", icons.getColor());
         colorButton.addActionListener(e -> {
-            particle = new Particle(ParticleType.REDSTONE, showColorPicker(frame));
+            particle = new Particle(ParticleType.DUST, showColorPicker(frame));
         });
 
-        JButton saveButton = new JButton("Save");
-        saveButton.addActionListener(e -> {
-            JFileChooser chooser = new JFileChooser(FileSystemView.getFileSystemView().getHomeDirectory());
-            chooser.setDialogTitle("Save File");
-            chooser.setDialogType(JFileChooser.SAVE_DIALOG);
-            chooser.setFileHidingEnabled(true);
-            chooser.setFileFilter(new FileNameExtensionFilter("YAML File", "yml"));
-
-            int option = chooser.showSaveDialog(frame);
-
-            if (option != JFileChooser.APPROVE_OPTION) {
-                return;
-            }
-
-            File file = chooser.getSelectedFile();
-
-            if (!file.getName().endsWith(".yml")) {
-                file = new File(file.getAbsolutePath() + ".yml");
-            }
-
-            try {
-                Exports.save(pixels, getMappings(), file);
-            } catch (Exception ex) {
-                ex.printStackTrace();
-                JOptionPane.showMessageDialog(frame, "An error occurred while saving the file!\nPlease send this to fumaz:\n" + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-            }
-        });
-
-        JButton openButton = new JButton("Open");
-        openButton.addActionListener(e -> {
-            JFileChooser chooser = new JFileChooser(FileSystemView.getFileSystemView().getHomeDirectory());
-            chooser.setDialogTitle("Open File");
-            chooser.setDialogType(JFileChooser.OPEN_DIALOG);
-            chooser.setFileHidingEnabled(true);
-            chooser.setFileFilter(new FileNameExtensionFilter("YAML File", "yml"));
-
-            int option = chooser.showOpenDialog(frame);
-
-            if (option != JFileChooser.APPROVE_OPTION) {
-                return;
-            }
-
-            File file = chooser.getSelectedFile();
-
-            try {
-                Exports.open(pixels, file);
-            } catch (Exception ex) {
-                ex.printStackTrace();
-                JOptionPane.showMessageDialog(frame, "An error occurred while opening the file!\nPlease send this to fumaz:\n" + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-            }
-        });
-
-        JButton templateButton = new JButton("Template");
+        Button templateButton = new Button("Templates", icons.getTemplate());
         templateButton.addActionListener(e -> {
             Template template = (Template) JOptionPane.showInputDialog(frame, null, "Choose Template", JOptionPane.INFORMATION_MESSAGE, null, templates.toArray(), templates.get(0));
 
@@ -164,15 +142,23 @@ public class Gui {
             template.load(pixels);
         });
 
+        buttons.add(projectButton);
         buttons.add(particleButton);
         buttons.add(colorButton);
-        buttons.add(saveButton);
-        buttons.add(openButton);
         buttons.add(templateButton);
 
         frame.add(buttons, BorderLayout.NORTH);
-        frame.add(panel, BorderLayout.SOUTH);
         frame.setVisible(true);
+
+        frame.addComponentListener(new ComponentAdapter() {
+            @Override
+            public void componentResized(ComponentEvent e) {
+                panel.repaint();
+
+                int width = (int) (frame.getWidth() * 0.5);
+                buttons.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, frame.getWidth() - width));
+            }
+        });
 
         panel.addMouseMotionListener(new MouseMotionAdapter() {
             @Override
@@ -183,11 +169,16 @@ public class Gui {
                     p = null;
                 }
 
+                Dimension panelSize = panel.getSize();
+
+                int effectivePixelSizeX = panelSize.width / WIDTH;
+                int effectivePixelSizeY = panelSize.height / HEIGHT;
+
                 int x = e.getX();
                 int y = e.getY();
 
-                int pixelX = x / PIXEL_SIZE;
-                int pixelY = y / PIXEL_SIZE;
+                int pixelX = x / effectivePixelSizeX;
+                int pixelY = y / effectivePixelSizeY;
 
                 if (pixelX < 0 || pixelY < 0 || pixelX >= WIDTH || pixelY >= HEIGHT) {
                     return;
@@ -306,7 +297,7 @@ public class Gui {
                     return;
                 }
 
-                Gui.this.particle = particle;
+                Project.this.particle = particle;
             }
         });
 
@@ -315,7 +306,7 @@ public class Gui {
 
         new Thread(() -> {
             while (running && frame.isVisible()) {
-                update(panel.getGraphics());
+                update(panel.getGraphics(), panel);
                 try {
                     Thread.sleep(100);
                 } catch (InterruptedException e) {
@@ -325,26 +316,37 @@ public class Gui {
         }).start();
     }
 
-    private void update(Graphics graphics) {
+    private void update(Graphics graphics, JPanel panel) {
+        int panelWidth = panel.getWidth();
+        int panelHeight = panel.getHeight();
+        int pixelWidth = panelWidth / WIDTH;
+        int pixelHeight = panelHeight / HEIGHT;
+
+        if (offScreenImage == null || offScreenImage.getWidth(null) != panelWidth || offScreenImage.getHeight(null) != panelHeight) {
+            offScreenImage = panel.createImage(panelWidth, panelHeight);
+        }
+
+        Graphics offScreenGraphics = offScreenImage.getGraphics();
+
         for (int y = 0; y < HEIGHT; y++) {
             for (int x = 0; x < WIDTH; x++) {
                 Particle particle = pixels[y][x];
-                Color color = particle == null ? null : particle.getColor();
-                boolean empty = particle == null;
+                Color color = particle == null ? background : particle.getColor();
+                offScreenGraphics.setColor(color);
+                offScreenGraphics.fillRect(x * pixelWidth, y * pixelHeight, pixelWidth, pixelHeight);
+                offScreenGraphics.setColor(color == Color.black ? Theme.UNCOLORED_PIXEL_COLOR : Color.black);
+                offScreenGraphics.drawRect(x * pixelWidth, y * pixelHeight, pixelWidth, pixelHeight);
 
-                if (empty) {
-                    color = background;
+                if (particle != null) {
+                    offScreenGraphics.drawString(particle.getType().getFormattedName(), x * pixelWidth + 5, y * pixelHeight + 15);
                 }
-
-                graphics.setColor(color);
-                graphics.fillRect(x * PIXEL_SIZE, y * PIXEL_SIZE, PIXEL_SIZE, PIXEL_SIZE);
-                graphics.setColor(color == Color.black ? Color.white : Color.black);
-                graphics.drawRect(x * PIXEL_SIZE, y * PIXEL_SIZE, PIXEL_SIZE, PIXEL_SIZE);
             }
         }
+
+        graphics.drawImage(offScreenImage, 0, 0, panel);
     }
 
-    private void clear() {
+    public void clear() {
         for (int y = 0; y < HEIGHT; y++) {
             for (int x = 0; x < WIDTH; x++) {
                 pixels[y][x] = null;
@@ -398,7 +400,7 @@ public class Gui {
         return particles;
     }
 
-    private Map<Character, Particle> getMappings() {
+    public Map<Character, Particle> getMappings() {
         Map<Character, Particle> mappings = new HashMap<>();
         Iterator<Character> characters = Arrays.stream(CHARSET.split(" "))
                 .map(s -> s.charAt(0))
@@ -409,6 +411,10 @@ public class Gui {
         getParticles().forEach(particle -> mappings.put(characters.next(), particle));
 
         return mappings;
+    }
+
+    public Particle[][] getPixels() {
+        return pixels;
     }
 
     private Color showColorPicker(JFrame frame) {
@@ -426,4 +432,28 @@ public class Gui {
         return colorChooser.getColor();
     }
 
+    public String getProjectName() {
+        return projectName;
+    }
+
+    public int getFrameWidth() {
+        return frame.getWidth();
+    }
+
+    public void setFrameWidth(int width) {
+        frame.setSize(width, frame.getHeight());
+    }
+
+    public int getFrameHeight() {
+        return frame.getHeight();
+    }
+
+    public void setFrameHeight(int height) {
+        frame.setSize(frame.getWidth(), height);
+    }
+
+    public void close() {
+        frame.dispose();
+        running = false;
+    }
 }
